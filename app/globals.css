@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* 🔮 Animasi Latar Belakang */
 @keyframes blob {
   0% {
     transform: translate(0px, 0px) scale(1);
