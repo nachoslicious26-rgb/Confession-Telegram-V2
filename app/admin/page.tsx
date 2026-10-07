@@ -43,10 +43,15 @@ export default function AdminDashboardPage() {
     return createClient(url, key);
   };
 
-  // 🔑 Log Masuk Admin
+  // 🔑 Log Masuk Admin (Tanpa Default Password)
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
+    const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+
+    if (!correctPassword) {
+      setAuthError('Kata laluan belum ditetapkan dalam Environment Variables.');
+      return;
+    }
 
     if (passwordInput === correctPassword) {
       sessionStorage.setItem('admin_authenticated', 'true');
