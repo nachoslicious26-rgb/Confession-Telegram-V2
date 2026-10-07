@@ -100,7 +100,7 @@ export default function NGLConfessionForm() {
     }
   };
 
-  // ✉️ Fungsi Hantar Mesej Terus ke Admin API
+  // ✉️ Hantar Mesej Terus ke Supabase (Tanpa API Route)
   const handleSendToAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminMessage.trim()) return;
@@ -109,23 +109,29 @@ export default function NGLConfessionForm() {
     setAdminMsgStatus('');
 
     try {
-      const res = await fetch('/api/contact-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: adminMessage.trim() }),
-      });
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-      if (res.ok) {
-        setAdminMsgStatus('success');
-        setAdminMessage('');
-        setTimeout(() => {
-          setShowAdminModal(false);
-          setAdminMsgStatus('');
-        }, 2000);
-      } else {
-        setAdminMsgStatus('error');
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Semak Environment Variables Supabase.');
       }
-    } catch (err) {
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+      const { error } = await supabase
+        .from('admin_messages')
+        .insert([{ message: adminMessage.trim(), status: 'unread' }]);
+
+      if (error) throw error;
+
+      setAdminMsgStatus('success');
+      setAdminMessage('');
+      setTimeout(() => {
+        setShowAdminModal(false);
+        setAdminMsgStatus('');
+      }, 2000);
+    } catch (err: any) {
+      console.error('Gagal hantar ke admin_messages:', err);
       setAdminMsgStatus('error');
     } finally {
       setSendingAdminMsg(false);
