@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import './globals.css'; // 👈 WAJIB: Memanggil Tailwind CSS
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Anonymous Confession | NGL Style',
@@ -12,8 +12,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ms" className="dark">
-      <body className="bg-black text-slate-100 antialiased selection:bg-purple-500 selection:text-white">
+    <html lang="ms">
+      <head>
+        {/* 🚀 Mengimpor Tailwind CSS via CDN secara langsung */}
+        <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body className="bg-[#030008] text-white antialiased">
         {children}
       </body>
     </html>
