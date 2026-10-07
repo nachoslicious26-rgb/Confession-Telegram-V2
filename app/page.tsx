@@ -13,6 +13,12 @@ export default function NGLConfessionForm() {
   const [errorMsg, setErrorMsg] = useState('');
   const [cooldown, setCooldown] = useState<number>(0);
 
+  // 📩 State untuk Modal Mesej Admin / Takedown Request
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminMessage, setAdminMessage] = useState('');
+  const [sendingAdminMsg, setSendingAdminMsg] = useState(false);
+  const [adminMsgStatus, setAdminMsgStatus] = useState<'success' | 'error' | ''>('');
+
   useEffect(() => {
     const lastSubmit = localStorage.getItem('last_confession_time');
     if (lastSubmit) {
@@ -94,10 +100,42 @@ export default function NGLConfessionForm() {
     }
   };
 
+  // ✉️ Fungsi Hantar Mesej Terus ke Admin API
+  const handleSendToAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminMessage.trim()) return;
+
+    setSendingAdminMsg(true);
+    setAdminMsgStatus('');
+
+    try {
+      const res = await fetch('/api/contact-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: adminMessage.trim() }),
+      });
+
+      if (res.ok) {
+        setAdminMsgStatus('success');
+        setAdminMessage('');
+        setTimeout(() => {
+          setShowAdminModal(false);
+          setAdminMsgStatus('');
+        }, 2000);
+      } else {
+        setAdminMsgStatus('error');
+      }
+    } catch (err) {
+      setAdminMsgStatus('error');
+    } finally {
+      setSendingAdminMsg(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-[#030008] text-white flex items-center justify-center p-4 overflow-hidden font-sans">
       
-      {/* 🔮 ANIMATED BACKGROUND ORBS (Ungu Gelap, Hitam, & Biru Pekat) */}
+      {/* 🔮 ANIMATED BACKGROUND ORBS */}
       <div className="absolute top-1/4 left-1/2 -translate-x-full w-96 h-96 bg-purple-900/40 rounded-full blur-[130px] animate-blob pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/2 translate-x-full w-96 h-96 bg-blue-950/60 rounded-full blur-[130px] animate-blob animation-delay-2000 pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-indigo-950/30 rounded-full blur-[150px] animate-blob animation-delay-4000 pointer-events-none" />
@@ -138,7 +176,7 @@ export default function NGLConfessionForm() {
 
             <button
               onClick={() => setSubmitted(false)}
-              className="w-full py-4 bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 text-xs font-bold rounded-2xl border border-purple-500/30 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(168,85,247,0.3)] active:scale-95"
+              className="w-full py-4 bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 text-xs font-bold rounded-2xl border border-purple-500/30 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(168,85,247,0.3)] active:scale-95 cursor-pointer"
             >
               Hantar Mesej Lain ✍️
             </button>
@@ -216,12 +254,85 @@ export default function NGLConfessionForm() {
           </form>
         )}
 
-        <div className="mt-8 text-center">
+        {/* 🔻 FOOTER & BUTANG MESEJ ADMIN */}
+        <div className="mt-8 text-center space-y-3 border-t border-purple-900/30 pt-5">
+          <button
+            type="button"
+            onClick={() => setShowAdminModal(true)}
+            className="text-xs text-purple-300/70 hover:text-purple-200 underline transition-all cursor-pointer font-medium flex items-center justify-center gap-1.5 mx-auto"
+          >
+            <span>⚠️</span>
+            <span>Ada masalah post / Takedown Request? Mesej Admin</span>
+          </button>
+
           <p className="text-[10px] text-purple-300/30 tracking-widest uppercase font-semibold">
             Confession V2 • Powered by Next.js
           </p>
         </div>
       </div>
+
+      {/* 📩 POPUP MODAL MESEJ ADMIN (NGL STYLED) */}
+      {showAdminModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="relative w-full max-w-sm bg-gradient-to-b from-purple-950 via-slate-900 to-black border border-purple-500/40 rounded-3xl p-6 space-y-4 shadow-[0_0_50px_rgba(168,85,247,0.3)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center border-b border-purple-900/50 pb-3">
+              <h3 className="text-sm font-bold text-purple-200 flex items-center gap-2">
+                <span>📨</span> Mesej Terus Ke Admin
+              </h3>
+              <button
+                onClick={() => setShowAdminModal(false)}
+                className="text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-purple-200/70 leading-relaxed">
+              Nyatakan masalah anda atau pautan/ID post confession yang mahu dipadamkan (*takedown*).
+            </p>
+
+            <form onSubmit={handleSendToAdmin} className="space-y-4">
+              <textarea
+                value={adminMessage}
+                onChange={(e) => setAdminMessage(e.target.value)}
+                placeholder="Contoh: Mohon padam post #Confession123 sebab tersebut nama peribadi..."
+                rows={4}
+                required
+                className="w-full bg-black/70 border border-purple-900/60 rounded-xl p-3 text-xs text-purple-100 placeholder-purple-400/30 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/50 resize-none"
+              />
+
+              {adminMsgStatus === 'success' && (
+                <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs text-center font-medium">
+                  ✅ Mesej berjaya dihantar ke Admin!
+                </div>
+              )}
+              {adminMsgStatus === 'error' && (
+                <div className="p-2.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs text-center font-medium">
+                  ❌ Gagal menghantar mesej. Sila cuba lagi.
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAdminModal(false)}
+                  className="w-1/2 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700/50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingAdminMsg || !adminMessage.trim()}
+                  className="w-1/2 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-40 cursor-pointer"
+                >
+                  {sendingAdminMsg ? 'Hantar...' : 'Hantar Mesej'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
