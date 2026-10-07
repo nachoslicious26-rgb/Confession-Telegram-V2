@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // Senarai Perkataan Terlarang (Boleh tambah/kurangkan mengikut keperluan)
-const BAD_WORDS = ['babi', 'sial', 'anjing', 'pukimak', 'pundek', 'pantat', 'boti', 'boty', 'bowtie', 'booty', 'b00ty', 'noty', 'gay', 'g4y', 'lesbian', 'lesb', 'fwb', 'sex', 'porn', 'porno', 'pornhub', 'onlyfan', 'tetek', 'puki', 'pussy', 'puci', 'konek', 'kote', 'pepek', 'poen', 'squirt', 'lancap', 'horny', 'hony'];
+const BAD_WORDS = ['fuck', 'fvck', 'pukimak', 'pundek', 'pantat', 'boti', 'boty', 'bowtie', 'booty', 'b00ty', 'noty', 'gay', 'g4y', 'lesbian', 'lesb', 'fwb', 'sex', 'porn', 'porno', 'pornhub', 'onlyfan', 'tetek', 'puki', 'pussy', 'puci', 'konek', 'kote', 'pepek', 'poen', 'squirt', 'lancap', 'horny', 'hony'];
 
 export default function PublicConfessionForm() {
   const [content, setContent] = useState('');
