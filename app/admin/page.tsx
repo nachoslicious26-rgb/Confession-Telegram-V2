@@ -72,7 +72,7 @@ export default function AdminDashboardPage() {
     refreshAllData();
   }, [refreshAllData]);
 
-  // ✈️ FUNGSI HANTAR KE TELEGRAM CHANNEL
+// ✈️ FUNGSI HANTAR KE TELEGRAM CHANNEL (TANPA AYAT PROMOSI)
   const sendToTelegram = async (id: number, content: string) => {
     const botToken = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
     const chatId = process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID;
@@ -82,7 +82,8 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    const telegramText = `📩 *CONFESSION (#${id})*\n\n"${content}"\n\n💬 _Luahkan mesej rahsia anda di borang kami!_`;
+    // Mesej hanya memaparkan Tajuk ID dan Isi Confession sahaja
+    const telegramText = `📩 *CONFESSION (#${id})*\n\n${content}`;
 
     try {
       const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
