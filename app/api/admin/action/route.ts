@@ -30,18 +30,19 @@ export async function POST(request: Request) {
 
     if (action === 'approve') {
       if (BOT_TOKEN && CHANNEL_ID) {
-        const text = content;
+        // Hantar kandungan mesej sahaja secara terus
         const telegramRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: CHANNEL_ID,
-            text: messageText,
-            parse_mode: 'Markdown',
+            text: content, // 👈 Terus hantar isi kandungan tanpa #Confession
           }),
         });
 
         if (!telegramRes.ok) {
+          const errorData = await telegramRes.json();
+          console.error('Telegram Error:', errorData);
           return NextResponse.json({ error: 'Gagal hantar ke Telegram Channel' }, { status: 500 });
         }
       }
