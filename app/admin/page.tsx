@@ -18,15 +18,50 @@ interface AdminMessage {
 }
 
 export default function AdminDashboardPage() {
+  // 🔒 State Keselamatan & Authentication
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
+
+  // 📊 State Data Admin
   const [confessions, setConfessions] = useState<Confession[]>([]);
   const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
+  // Semak sesi log masuk sedia ada di sessionStorage
+  useEffect(() => {
+    const authSession = sessionStorage.getItem('admin_authenticated');
+    if (authSession === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
   const getSupabase = () => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     return createClient(url, key);
+  };
+
+  // 🔑 Log Masuk Admin
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const correctPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
+
+    if (passwordInput === correctPassword) {
+      sessionStorage.setItem('admin_authenticated', 'true');
+      setIsAuthenticated(true);
+      setAuthError('');
+      setPasswordInput('');
+    } else {
+      setAuthError('Kata laluan tidak sah! Sila cuba lagi.');
+    }
+  };
+
+  // 🚪 Log Keluar Admin
+  const handleLogout = () => {
+    sessionStorage.removeItem('admin_authenticated');
+    setIsAuthenticated(false);
   };
 
   // 1. Ambil data Confession Pending
@@ -69,10 +104,12 @@ export default function AdminDashboardPage() {
   }, [fetchPendingConfessions, fetchAdminMessages]);
 
   useEffect(() => {
-    refreshAllData();
-  }, [refreshAllData]);
+    if (isAuthenticated) {
+      refreshAllData();
+    }
+  }, [isAuthenticated, refreshAllData]);
 
-// ✈️ FUNGSI HANTAR KE TELEGRAM CHANNEL (TANPA AYAT PROMOSI)
+  // ✈️ Hantar ke Telegram Channel
   const sendToTelegram = async (id: number, content: string) => {
     const botToken = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
     const chatId = process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID;
@@ -82,7 +119,6 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    // Mesej hanya memaparkan Tajuk ID dan Isi Confession sahaja
     const telegramText = `📩 *CONFESSION (#${id})*\n\n${content}`;
 
     try {
@@ -105,13 +141,11 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // ✅ Kelulusan Confession (Approve & Publish to Telegram)
+  // ✅ Kelulusan Confession
   const handleApprove = async (id: number, content: string) => {
     setActionLoadingId(id);
     try {
       const supabase = getSupabase();
-      
-      // Kemaskini status dalam database
       const { error } = await supabase
         .from('confessions')
         .update({ status: 'approved' })
@@ -119,10 +153,7 @@ export default function AdminDashboardPage() {
 
       if (error) throw error;
 
-      // Hantar mesej automatik ke Telegram Channel
       await sendToTelegram(id, content);
-
-      // Buang dari senarai pending UI
       setConfessions((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       alert('Gagal meluluskan confession.');
@@ -178,6 +209,52 @@ export default function AdminDashboardPage() {
     });
   };
 
+  // 🔒 PAPARAN 1: SKRIN LOG MASUK JIKA BELUM LOG IN
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#030008] text-white flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-sm bg-gradient-to-b from-purple-950/60 via-slate-900/80 to-black border border-purple-500/30 rounded-3xl p-8 space-y-6 shadow-[0_0_50px_rgba(88,28,135,0.3)]">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 mx-auto bg-purple-900/40 border border-purple-500/40 rounded-2xl flex items-center justify-center text-3xl mb-2">
+              🛡️
+            </div>
+            <h1 className="text-2xl font-bold text-white">Admin Access</h1>
+            <p className="text-xs text-purple-200/60">
+              Sila masukkan kata laluan untuk mengakses Dashboard.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="Masukkan kata laluan..."
+                required
+                className="w-full bg-black/70 border border-purple-900/60 rounded-xl px-4 py-3 text-sm text-purple-100 placeholder-purple-400/30 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/50"
+              />
+            </div>
+
+            {authError && (
+              <div className="p-3 bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs rounded-xl text-center font-medium">
+                ⚠️ {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer"
+            >
+              Log Masuk Dashboard
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔓 PAPARAN 2: DASHBOARD ADMIN JIKA DAH LOG IN
   return (
     <div className="min-h-screen bg-[#06040d] text-slate-100 p-4 sm:p-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -200,6 +277,13 @@ export default function AdminDashboardPage() {
               className="px-4 py-2 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-500/30 rounded-xl text-xs font-semibold text-blue-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <span>🔄</span> Refresh All
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-rose-950/50 hover:bg-rose-900/80 border border-rose-500/40 rounded-xl text-xs font-semibold text-rose-200 transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <span>🚪</span> Keluar
             </button>
           </div>
         </div>
