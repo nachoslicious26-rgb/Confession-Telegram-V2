@@ -23,14 +23,13 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
-  // Inisialisasi Supabase Client
   const getSupabase = () => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     return createClient(url, key);
   };
 
-  // 1. Ambil data Confession Menunggu (pending)
+  // 1. Ambil data Confession Pending
   const fetchPendingConfessions = useCallback(async () => {
     try {
       const supabase = getSupabase();
@@ -47,7 +46,7 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  // 2. Ambil data Mesej Kepada Admin
+  // 2. Ambil data Mesej Admin
   const fetchAdminMessages = useCallback(async () => {
     try {
       const supabase = getSupabase();
@@ -63,7 +62,6 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  // Refresh Semua Data
   const refreshAllData = useCallback(async () => {
     setLoading(true);
     await Promise.all([fetchPendingConfessions(), fetchAdminMessages()]);
@@ -74,17 +72,56 @@ export default function AdminDashboardPage() {
     refreshAllData();
   }, [refreshAllData]);
 
-  // Kelulusan Confession (Approve)
-  const handleApprove = async (id: number) => {
+  // ✈️ FUNGSI HANTAR KE TELEGRAM CHANNEL
+  const sendToTelegram = async (id: number, content: string) => {
+    const botToken = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID;
+
+    if (!botToken || !chatId) {
+      console.warn('TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID tidak dijumpai dalam env.');
+      return;
+    }
+
+    const telegramText = `📩 *CONFESSION (#${id})*\n\n"${content}"\n\n💬 _Luahkan mesej rahsia anda di borang kami!_`;
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: telegramText,
+          parse_mode: 'Markdown',
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        console.error('Gagal hantar ke Telegram API:', errData);
+      }
+    } catch (err) {
+      console.error('Ralat rangkaian semasa hantar ke Telegram:', err);
+    }
+  };
+
+  // ✅ Kelulusan Confession (Approve & Publish to Telegram)
+  const handleApprove = async (id: number, content: string) => {
     setActionLoadingId(id);
     try {
       const supabase = getSupabase();
+      
+      // Kemaskini status dalam database
       const { error } = await supabase
         .from('confessions')
         .update({ status: 'approved' })
         .eq('id', id);
 
       if (error) throw error;
+
+      // Hantar mesej automatik ke Telegram Channel
+      await sendToTelegram(id, content);
+
+      // Buang dari senarai pending UI
       setConfessions((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       alert('Gagal meluluskan confession.');
@@ -93,7 +130,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Penolakan Confession (Reject)
+  // ❌ Penolakan Confession
   const handleReject = async (id: number) => {
     setActionLoadingId(id);
     try {
@@ -112,7 +149,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Padam Mesej Admin
+  // 🗑️ Padam Mesej Admin
   const handleDeleteAdminMessage = async (id: number) => {
     try {
       const supabase = getSupabase();
@@ -128,7 +165,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Format Tarikh & Masa
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ms-MY', {
       day: 'numeric',
@@ -145,7 +181,7 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-[#06040d] text-slate-100 p-4 sm:p-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-8">
 
-        {/* 🛡️ HEADER DASHBOARD */}
+        {/* HEADER DASHBOARD */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
@@ -167,7 +203,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* 📨 SECTION 1: MESEJ KEPADA ADMIN */}
+        {/* SECTION 1: MESEJ KEPADA ADMIN */}
         <section className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-xl backdrop-blur-md">
           <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800/60">
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
@@ -219,7 +255,7 @@ export default function AdminDashboardPage() {
           )}
         </section>
 
-        {/* 📝 SECTION 2: CONFESSION MENUNGGU KELULUSAN */}
+        {/* SECTION 2: CONFESSION MENUNGGU KELULUSAN */}
         <section className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-xl backdrop-blur-md">
           <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-800/60">
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
@@ -257,7 +293,7 @@ export default function AdminDashboardPage() {
                     </button>
 
                     <button
-                      onClick={() => handleApprove(item.id)}
+                      onClick={() => handleApprove(item.id, item.content)}
                       disabled={actionLoadingId === item.id}
                       className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                     >
