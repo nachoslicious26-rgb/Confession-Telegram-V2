@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const BAD_WORDS = ['fuck', 'fvck', 'pukimak', 'pundek', 'pantat', 'boti', 'boty', 'bowtie', 'booty', 'b00ty', 'noty', 'gay', 'g4y', 'lesbian', 'lesb', 'fwb', 'sex', 'porn', 'porno', 'pornhub', 'onlyfan', 'tetek', 'puki', 'pussy', 'puci', 'konek', 'kote', 'pepek', 'poen', 'squirt', 'lancap', 'horny', 'hony'];
+
+interface Confession {
+  id: number;
+  content: string;
+  created_at: string;
+}
 
 export default function NGLConfessionForm() {
   const [content, setContent] = useState('');
@@ -13,12 +19,44 @@ export default function NGLConfessionForm() {
   const [errorMsg, setErrorMsg] = useState('');
   const [cooldown, setCooldown] = useState<number>(0);
 
-  // 📩 State untuk Modal Mesej Admin / Takedown Request
+  // 📩 State untuk Modal Mesej Admin
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminMessage, setAdminMessage] = useState('');
   const [sendingAdminMsg, setSendingAdminMsg] = useState(false);
   const [adminMsgStatus, setAdminMsgStatus] = useState<'success' | 'error' | ''>('');
 
+  // 🔥 State untuk Confession Yang Dah Approved
+  const [approvedConfessions, setApprovedConfessions] = useState<Confession[]>([]);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+
+  // 1. Ambil Confession Status 'approved' dari Supabase
+  const fetchApprovedConfessions = useCallback(async () => {
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      if (!supabaseUrl || !supabaseAnonKey) return;
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const { data, error } = await supabase
+        .from('confessions')
+        .select('*')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setApprovedConfessions(data || []);
+    } catch (err) {
+      console.error('Ralat mengambil confession approved:', err);
+    } finally {
+      setLoadingFeed(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchApprovedConfessions();
+  }, [fetchApprovedConfessions]);
+
+  // Cooldown timer logic
   useEffect(() => {
     const lastSubmit = localStorage.getItem('last_confession_time');
     if (lastSubmit) {
@@ -100,7 +138,7 @@ export default function NGLConfessionForm() {
     }
   };
 
-  // ✉️ Hantar Mesej Terus ke Supabase (Tanpa API Route)
+  // ✉️ Hantar Mesej Terus ke Supabase
   const handleSendToAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminMessage.trim()) return;
@@ -139,16 +177,15 @@ export default function NGLConfessionForm() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#030008] text-white flex items-center justify-center p-4 overflow-hidden font-sans">
-      
+    <div className="relative min-h-screen bg-[#030008] text-white flex flex-col items-center justify-start py-10 px-4 space-y-10 overflow-x-hidden font-sans">
+
       {/* 🔮 ANIMATED BACKGROUND ORBS */}
       <div className="absolute top-1/4 left-1/2 -translate-x-full w-96 h-96 bg-purple-900/40 rounded-full blur-[130px] animate-blob pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/2 translate-x-full w-96 h-96 bg-blue-950/60 rounded-full blur-[130px] animate-blob animation-delay-2000 pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-indigo-950/30 rounded-full blur-[150px] animate-blob animation-delay-4000 pointer-events-none" />
 
-      {/* 💳 NGL STYLE CARD */}
-      <div className="relative w-full max-w-md bg-gradient-to-b from-purple-950/40 via-slate-900/60 to-black/80 backdrop-blur-2xl border border-purple-500/20 rounded-[2.5rem] p-7 sm:p-9 shadow-[0_0_50px_rgba(88,28,135,0.25)] transition-all duration-300 hover:border-purple-500/40">
-        
+      {/* 💳 CARD 1: FORM NGL INPUT */}
+      <div className="relative z-10 w-full max-w-md bg-gradient-to-b from-purple-950/40 via-slate-900/60 to-black/80 backdrop-blur-2xl border border-purple-500/20 rounded-[2.5rem] p-7 sm:p-9 shadow-[0_0_50px_rgba(88,28,135,0.25)] transition-all duration-300 hover:border-purple-500/40">
+
         {/* NGL Header Badge */}
         <div className="text-center space-y-3 mb-6">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-900/60 to-blue-900/60 border border-purple-400/30 text-purple-200 text-xs font-semibold tracking-wide shadow-lg shadow-purple-950/50">
@@ -182,7 +219,7 @@ export default function NGLConfessionForm() {
 
             <button
               onClick={() => setSubmitted(false)}
-              className="w-full py-4 bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 text-xs font-bold rounded-2xl border border-purple-500/30 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(168,85,247,0.3)] active:scale-95 cursor-pointer"
+              className="w-full py-4 bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 text-xs font-bold rounded-2xl border border-purple-500/30 transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer"
             >
               Hantar Mesej Lain ✍️
             </button>
@@ -238,11 +275,10 @@ export default function NGLConfessionForm() {
               </div>
             )}
 
-            {/* ⚡ HOVER GLOW BUTTON */}
             <button
               type="submit"
               disabled={loading || !content.trim() || cooldown > 0}
-              className="relative w-full py-4 px-6 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:via-indigo-500 hover:to-blue-500 text-white font-extrabold text-sm rounded-2xl shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_35px_rgba(168,85,247,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-40 disabled:hover:scale-100 disabled:hover:shadow-none cursor-pointer disabled:cursor-not-allowed overflow-hidden"
+              className="relative w-full py-4 px-6 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:via-indigo-500 hover:to-blue-500 text-white font-extrabold text-sm rounded-2xl shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_35px_rgba(168,85,247,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed overflow-hidden"
             >
               <span className="relative z-10 flex items-center justify-center gap-2 tracking-wider uppercase text-xs">
                 {loading ? (
@@ -252,7 +288,7 @@ export default function NGLConfessionForm() {
                 ) : (
                   <>
                     <span>Hantar Mesej</span>
-                    <span className="text-base transition-transform duration-300 group-hover:translate-x-1">🔥</span>
+                    <span className="text-base transition-transform duration-300">🔥</span>
                   </>
                 )}
               </span>
@@ -277,10 +313,57 @@ export default function NGLConfessionForm() {
         </div>
       </div>
 
-      {/* 📩 POPUP MODAL MESEJ ADMIN (NGL STYLED) */}
+      {/* 📜 CARD 2: SENARAI CONFESSION YANG DAH DILULUSKAN (APPROVED FEED) */}
+      <div className="relative z-10 w-full max-w-md bg-gradient-to-b from-slate-900/80 to-black/90 backdrop-blur-2xl border border-purple-500/20 rounded-[2.5rem] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)] space-y-5">
+        <div className="flex justify-between items-center border-b border-purple-900/40 pb-3">
+          <h2 className="text-base font-bold text-purple-200 flex items-center gap-2">
+            <span>🔥</span> Confession Terkini
+          </h2>
+          <button
+            onClick={fetchApprovedConfessions}
+            className="text-xs text-purple-400 hover:text-purple-300 underline font-medium cursor-pointer"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {loadingFeed ? (
+          <p className="text-xs text-slate-500 text-center py-6">Memuatkan confession...</p>
+        ) : approvedConfessions.length === 0 ? (
+          <div className="text-center py-8 text-xs text-slate-500">
+            Belum ada confession yang diluluskan lagi.
+          </div>
+        ) : (
+          <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+            {approvedConfessions.map((item) => (
+              <div
+                key={item.id}
+                className="bg-black/50 border border-purple-900/30 hover:border-purple-500/40 rounded-2xl p-4 transition-all space-y-2 shadow-sm"
+              >
+                <div className="flex justify-between items-center text-[10px] text-purple-400 font-mono">
+                  <span>#Confession{item.id}</span>
+                  <span>
+                    {new Date(item.created_at).toLocaleString('ms-MY', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                  {item.content}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 📩 POPUP MODAL MESEJ ADMIN */}
       {showAdminModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="relative w-full max-w-sm bg-gradient-to-b from-purple-950 via-slate-900 to-black border border-purple-500/40 rounded-3xl p-6 space-y-4 shadow-[0_0_50px_rgba(168,85,247,0.3)] animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-sm bg-gradient-to-b from-purple-950 via-slate-900 to-black border border-purple-500/40 rounded-3xl p-6 space-y-4 shadow-[0_0_50px_rgba(168,85,247,0.3)]">
             <div className="flex justify-between items-center border-b border-purple-900/50 pb-3">
               <h3 className="text-sm font-bold text-purple-200 flex items-center gap-2">
                 <span>📨</span> Mesej Terus Ke Admin
