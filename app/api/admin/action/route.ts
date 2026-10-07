@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     if (action === 'approve') {
       if (BOT_TOKEN && CHANNEL_ID) {
-        const messageText = `📢 **#Confession**\n\n${content}`;
+        const text = content;
         const telegramRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
