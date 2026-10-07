@@ -1,8 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* 🔮 Animasi Latar Belakang NGL Style */
 @keyframes blob {
   0% {
     transform: translate(0px, 0px) scale(1);
