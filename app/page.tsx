@@ -3,10 +3,6 @@
 import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 export default function PublicConfessionForm() {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,6 +17,15 @@ export default function PublicConfessionForm() {
     setErrorMsg('');
 
     try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Sila semak Environment Variables di Vercel.');
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
       const { error } = await supabase
         .from('confessions')
         .insert([{ content: content.trim(), status: 'pending' }]);
@@ -30,7 +35,7 @@ export default function PublicConfessionForm() {
       setSubmitted(true);
       setContent('');
     } catch (err: any) {
-      setErrorMsg('Gagal menghantar confession. Sila cuba lagi.');
+      setErrorMsg(err.message || 'Gagal menghantar confession. Sila cuba lagi.');
     } finally {
       setLoading(false);
     }
