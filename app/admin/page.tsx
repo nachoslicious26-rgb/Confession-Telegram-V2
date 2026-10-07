@@ -3,10 +3,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 interface Confession {
   id: number;
   content: string;
@@ -21,16 +17,31 @@ export default function AdminDashboard() {
 
   const fetchPendingConfessions = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('confessions')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-    if (!error && data) {
-      setConfessions(data);
+      if (!supabaseUrl || !supabaseAnonKey) {
+        setLoading(false);
+        return;
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+      const { data, error } = await supabase
+        .from('confessions')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setConfessions(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
